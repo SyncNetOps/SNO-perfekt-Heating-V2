@@ -1,16 +1,16 @@
-    # --- @SyncNetOps || SNO-perfekt-Heating || V2.2 ---
+# --- @SyncNetOps || SNO-perfekt-Heating || V2.2.2 ---
 
 blueprint:
   name: SNO-perfekt-Heating
   description: >
-    # 🌟 SNO-perfekt-Heating (Thermostate & Klima) V2.2 by SyncNetOps 🌡️☀️
+    # 🌟 SNO-perfekt-Heating (Thermostate & Klima) V2.2.2 by SyncNetOps 🌡️☀️
     
     Diese ultimative Version steuert dein Thermostat nach Zeit, Anwesenheit, Jahreszeit, offenen Fenstern und externen Heizquellen (z.B. Kamin).
     Alle Temperaturwerte können entweder per festem Regler oder dynamisch über eine Dashboard-Entität gesteuert werden.
     
     🌐 **HILFE & DOKUMENTATION:**
     Für ausführliche Anleitungen und Beispiele besuche unsere Hilfeseite:
-    [https://sno.mb222.de/ph-faq](https://sno.mb222.de/ph-faq/)
+    [https://sno.mb222.de/ph-faq/](https://sno.mb222.de/ph-faq/)
     
     **PRIORITÄTEN-LOGIK (Wer gewinnt?):**
     1. **✋ Manuell:** Heizen exakt nach manueller Temperatur. Alles andere wird ignoriert.
@@ -340,35 +340,52 @@ variables:
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(21.0) }}
     {% else %} {{ night_comfort_temperature | float(21.0) }} {% endif %}
 
-  # --- 3. STATUS ENGINE & LOGIK (STRICT BOOLEANS) ---
-  is_manual: "{{ manual_temperature_control != [] and manual_temperature_control != none and is_state(manual_temperature_control, 'on') }}"
+  # --- 3. STATUS ENGINE & LOGIK ---
+  
+  is_manual: >-
+    {% set ent = manual_temperature_control %}
+    {{ ent != [] and ent != none and is_state(ent, 'on') }}
     
-  is_room_occupied: "{{ room_presence == [] or room_presence == none or is_state(room_presence, 'on') }}"
+  is_room_occupied: >-
+    {% set ent = room_presence %}
+    {{ ent == [] or ent == none or is_state(ent, 'on') }}
 
-  is_extern: "{{ extern_mode_switch != [] and extern_mode_switch != none and is_state(extern_mode_switch, 'on') }}"
+  is_extern: >-
+    {% set ent = extern_mode_switch %}
+    {{ ent != [] and ent != none and is_state(ent, 'on') }}
 
-  # --- Multi-Fenster Logik ---
   is_window_open: >-
     {% set ent = window_sensor %}
     {% if ent != [] and ent != none %}
-      {% set open_entities = expand(ent) | selectattr('state', 'eq', 'on') | list %}
-      {{ open_entities | length > 0 }}
+      {{ is_state(ent, 'on') or (expand(ent) | selectattr('state', 'eq', 'on') | list | length > 0) }}
     {% else %}
       false
     {% endif %}
 
+  is_summer_toggle: >-
+    {% set ent = summer_mode_toggle %}
+    {{ ent != [] and ent != none and is_state(ent, 'on') }}
+
+  is_summer_sensor: >-
+    {% set ent = summer_sensor %}
+    {{ ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] and states(ent) | float(0) >= (summer_sensor_threshold | float(22.0)) }}
+
+  is_summer: "{{ is_summer_toggle | bool or is_summer_sensor | bool }}"
+
   open_windows_text: >-
     {% set ent = window_sensor %}
     {% if ent != [] and ent != none %}
-      {% set open_entities = expand(ent) | selectattr('state', 'eq', 'on') | list %}
-      {% set count = open_entities | length %}
+      {% set opens = expand(ent) | selectattr('state', 'eq', 'on') | list %}
+      {% set count = opens | length %}
       {% if count > 0 %}
-        {% set names = open_entities | map(attribute='name') | join(', ') %}
+        {% set names = opens | map(attribute='name') | join(', ') %}
         {% if count == 1 %}
           1 Fenster ({{ names }}) offen
         {% else %}
           {{ count }} Fenster ({{ names }}) offen
         {% endif %}
+      {% elif is_state(ent, 'on') %}
+        Fenster offen
       {% else %}
         geschlossen
       {% endif %}
@@ -376,14 +393,6 @@ variables:
       geschlossen
     {% endif %}
 
-  is_summer: >-
-    {% set toggle_on = (summer_mode_toggle != [] and summer_mode_toggle != none and is_state(summer_mode_toggle, 'on')) %}
-    {% set sensor_hot = false %}
-    {% if summer_sensor != [] and summer_sensor != none and states(summer_sensor) not in ['unknown', 'unavailable', 'none', ''] %}
-      {% set sensor_hot = states(summer_sensor) | float(0) >= (summer_sensor_threshold | float(22.0)) %}
-    {% endif %}
-    {{ toggle_on or sensor_hot }}
-    
   is_away: >-
     {% if home_presence == [] or home_presence == none or is_state(home_presence, 'on') %}
       false
@@ -408,14 +417,10 @@ variables:
     {% else %} Nacht
     {% endif %}
     
-  calc_target_temp: >-
+  target_temp_raw: >-
     {% if is_manual | bool %}
       {% set ent = manual_temperature %}
-      {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %}
-        {{ states(ent) | float(21.0) }}
-      {% else %}
-        21.0
-      {% endif %}
+      {{ states(ent) | float(21.0) if (ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', '']) else 21.0 }}
     {% elif is_summer | bool %}
       {{ eff_summer | float }}
     {% elif is_window_open | bool %}
@@ -425,12 +430,18 @@ variables:
     {% elif is_away | bool %}
       {{ eff_away | float }}
     {% else %}
-      {% if current_period == 'Morgen' %} {{ eff_m_comf | float if is_room_occupied | bool else eff_m_eco | float }}
-      {% elif current_period == 'Tag' %} {{ eff_d_comf | float if is_room_occupied | bool else eff_d_eco | float }}
-      {% elif current_period == 'Abend' %} {{ eff_e_comf | float if is_room_occupied | bool else eff_e_eco | float }}
-      {% else %} {{ eff_n_comf | float if is_room_occupied | bool else eff_n_eco | float }}
+      {% if current_period == 'Morgen' %}
+        {{ eff_m_comf | float if is_room_occupied | bool else eff_m_eco | float }}
+      {% elif current_period == 'Tag' %}
+        {{ eff_d_comf | float if is_room_occupied | bool else eff_d_eco | float }}
+      {% elif current_period == 'Abend' %}
+        {{ eff_e_comf | float if is_room_occupied | bool else eff_e_eco | float }}
+      {% else %}
+        {{ eff_n_comf | float if is_room_occupied | bool else eff_n_eco | float }}
       {% endif %}
     {% endif %}
+    
+  calc_target_temp: "{{ target_temp_raw | float }}"
     
   status_string: >-
     {% if is_manual | bool %}✋ Manuell - Soll: {{ calc_target_temp }} °C
@@ -489,8 +500,6 @@ trigger:
     entity_id: !input day_comfort_temperature_entity
   - platform: state
     entity_id: !input evening_eco_temperature_entity
-  - platform: state
-    entity_id: !input evening_comfort_temperature_entity
   - platform: state
     entity_id: !input night_eco_temperature_entity
   - platform: state
@@ -609,14 +618,17 @@ action:
             target:
               entity_id: !input status_text_entity
 
-  # 5. Temperatur an Thermostat senden
+  # 5. Temperatur an Thermostat senden (Erzwingt sauberen Float-Wert!)
   - choose:
       - conditions:
           - condition: template
-            value_template: "{{ state_attr(climate_entity, 'temperature') | float(-99) != calc_target_temp | float(0) }}"
+            value_template: >-
+              {% set target = calc_target_temp | float(-99) %}
+              {% set current = state_attr(climate_entity, 'temperature') | float(-99) %}
+              {{ current != target }}
         sequence:
           - service: climate.set_temperature
             data:
-              temperature: "{{ calc_target_temp }}"
+              temperature: "{{ calc_target_temp | float }}"
             target:
               entity_id: !input climate_entity
