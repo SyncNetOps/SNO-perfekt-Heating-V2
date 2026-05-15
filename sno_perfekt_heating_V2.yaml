@@ -1,9 +1,9 @@
-# --- @SyncNetOps || SNO-perfekt-Heating || V2.3.0 - 10052026 ---
+# --- @SyncNetOps || SNO-perfekt-Heating || V2.3.0 - Fix 1 ---
 
 blueprint:
-  name: SNO-perfekt-Heating V2.3
+  name: SNO-perfekt-Heating V2.3.0-F1
   description: >
-    # 🌟 SNO-perfekt-Heating (Pro-Edition) V2.3 by SyncNetOps 🌡️☀️
+    # 🌟 SNO-perfekt-Heating (Pro-Edition) V2.3.0-F1 by SyncNetOps 🌡️☀️
     
     Diese Version bietet maximale Flexibilität durch konfigurierbare Prioritäten, dynamische Fenster-Absenkung, Urlaubsmodus und intelligente Auto-Resets.
     
@@ -472,12 +472,6 @@ variables:
     {% set ent = extern_mode_switch %}
     {{ ent != [] and ent != none and is_state(ent, 'on') }}
 
-  is_window_open: >-
-    {% set ent = window_sensor %}
-    {% if ent != [] and ent != none %}
-      {{ is_state(ent, 'on') or (expand(ent) | selectattr('state', 'eq', 'on') | list | length > 0) }}
-    {% else %} false {% endif %}
-
   is_summer_toggle: >-
     {% set ent = summer_mode_toggle %}
     {{ ent != [] and ent != none and is_state(ent, 'on') }}
@@ -488,16 +482,26 @@ variables:
 
   is_summer: "{{ is_summer_toggle | bool or is_summer_sensor | bool }}"
 
+  # --- KORREKTUR: ROBUSTE FENSTER-ERKENNUNG & ZÄHLUNG ---
+  is_window_open: >-
+    {% set ent = window_sensor %}
+    {% if ent != [] and ent != none %}
+      {% set members = state_attr(ent, 'entity_id') %}
+      {% set targets = members if members != none else ent %}
+      {{ expand(targets) | selectattr('state', 'eq', 'on') | list | length > 0 }}
+    {% else %} false {% endif %}
+
   open_windows_text: >-
     {% set ent = window_sensor %}
     {% if ent != [] and ent != none %}
-      {% set opens = expand(ent) | selectattr('state', 'eq', 'on') | list %}
+      {% set members = state_attr(ent, 'entity_id') %}
+      {% set targets = members if members != none else ent %}
+      {% set opens = expand(targets) | selectattr('state', 'eq', 'on') | list %}
       {% set count = opens | length %}
       {% if count > 0 %}
         {% set names = opens | map(attribute='name') | join(', ') %}
         {% if count == 1 %} 1 Fenster ({{ names }}) offen
         {% else %} {{ count }} Fenster ({{ names }}) offen {% endif %}
-      {% elif is_state(ent, 'on') %} Fenster offen
       {% else %} geschlossen {% endif %}
     {% else %} geschlossen {% endif %}
 
