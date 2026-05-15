@@ -50,3 +50,6 @@ Wir haben umfangreiche Dokumentationen erstellt, um dir die Einrichtung so einfa
 
 **Entwickelt von SyncNetOps für die Home Assistant Community.**
 Heize klüger, nicht härter! 🌡️
+
+
+-> 15052026
