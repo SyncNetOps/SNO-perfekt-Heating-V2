@@ -1,33 +1,39 @@
-# --- @SyncNetOps || SNO-perfekt-Heating || V2.3.0 - Fix 1 ---
+# --- @SyncNetOps || SNO-perfekt-Heating || V2.4.0-F5 || 15052026---
 
 blueprint:
-  name: SNO-perfekt-Heating V2.3.0-F1
-  description: >
-    # 🌟 SNO-perfekt-Heating (Pro-Edition) V2.3.0-F1 by SyncNetOps 🌡️☀️
+  name: SNO-perfekt-Heating V2.4.0
+  description: |
+    # 🌟 SNO-perfekt-Heating
     
-    Diese Version bietet maximale Flexibilität durch konfigurierbare Prioritäten, dynamische Fenster-Absenkung, Urlaubsmodus und intelligente Auto-Resets.
+    Diese intelligente Heizungssteuerung optimiert deinen Komfort und Energieverbrauch durch eine dynamische Prioritäten-Logik (Manuell > Sommer > Urlaub > Fenster > Extern > Abwesend > Auto).
     
-    🌐 **HILFE & DOKUMENTATION:** [https://sno.mb222.de/ph-faq/](https://sno.mb222.de/ph-faq/)
+    ### 🛠️ Kurzanleitung zur Einrichtung:
+    **1️⃣ Kern-Konfiguration:** Wähle deine Thermostate & Anwesenheits-Helfer.
+    **2️⃣ Manuell:** Schalter für Handbetrieb & automatische Rücksetzung.
+    **3️⃣ Urlaub:** Urlaubs-Modus & automatische Deaktivierung nach X Tagen.
+    **4️⃣ Fenster:** Sensoren & Zuweisung, wann Fenster relevant sind.
+    **5️⃣ Sommer & Extern:** Kamin-Erkennung & automatische Sommer-Abschaltung.
+    **6️⃣ Zeitpläne (Auto):** Uhrzeiten & Zieltemperaturen für deinen Alltag.
+    **7️⃣ Dashboard:** Helfer für Status-Anzeigen in deiner UI.
     
     ---
-    **PRIORITÄTEN-KETTE (Wer gewinnt?):**
-    1. **✋ Manuell** (Kann sich nun automatisch deaktivieren)
-    2. **☀️ Sommer** (Ignoriert geöffnete Fenster)
-    3. **🌴 Urlaub** (Pausiert nach X Tagen automatisch)
-    4. **🪟 Fenster Offen** (Greift nur in den von dir erlaubten Modi!)
-    5. **🔥 Extern** (Kamin-Erkennung)
-    6. **🚶 Abwesend**
-    7. **🕒 Auto** (Zeitpläne & Raum-Präsenz)
+    🔗 **Hilfe & Detaillierte Anleitung:** [Projektseite / FAQ](https://sno.mb222.de/ph-faq/)
+    🐞 **Fehler gefunden?** [Issue auf GitHub öffnen](https://github.com/SyncNetOps/SNO-perfekt-Heating-V2)
   domain: automation
   input:
     # --- 1️⃣ BASIS SETUP ---
     section_core:
       name: "1️⃣ Kern-Konfiguration"
       icon: mdi:thermostat
+      collapsed: true
       input:
         climate_entity:
-          name: Klima-Entität (Thermostat)
-          selector: {entity: {domain: climate}}
+          name: Klima-Entität(en) (Thermostate)
+          description: "Wähle ein oder mehrere Thermostate oder eine Helfer-Gruppe aus."
+          selector:
+            entity:
+              domain: climate
+              multiple: true
         home_presence:
           name: Anwesenheit Haus (Optional)
           description: "Leer = Haus gilt als 'immer bewohnt'."
@@ -55,6 +61,7 @@ blueprint:
     section_manual:
       name: "2️⃣ Manueller Modus & Auto-Reset"
       icon: mdi:hand-back-right
+      collapsed: true
       input:
         manual_temperature_control:
           name: ✋ Manueller Schalter (Optional)
@@ -95,6 +102,7 @@ blueprint:
     section_vacation:
       name: "3️⃣ Urlaubsmodus"
       icon: mdi:palm-tree
+      collapsed: true
       input:
         vacation_switch:
           name: 🌴 Urlaubsmodus Schalter (Optional)
@@ -122,11 +130,16 @@ blueprint:
     section_window:
       name: "4️⃣ Fenster-Erkennung (Dynamisch)"
       icon: mdi:window-open
+      collapsed: true
       input:
         window_sensor:
-          name: 🪟 Fenster-Sensor (Optional)
+          name: 🪟 Fenster-Sensor(en) (Optional)
+          description: "Wähle ein oder mehrere Fenster-Sensoren oder eine Helfer-Gruppe aus."
           default: []
-          selector: {entity: {domain: binary_sensor}}
+          selector:
+            entity:
+              domain: binary_sensor
+              multiple: true
         window_temperature:
           name: 🪟 Fenster Offen Temperatur (Regler)
           default: 5.0
@@ -310,7 +323,6 @@ blueprint:
 mode: restart
 max_exceeded: silent
 
-# --- 1. SICHERE TRIGGER VARIABLEN (Fix für TemplateSyntaxError) ---
 trigger_variables:
   trig_man_ctrl: !input manual_temperature_control
   trig_man_dur_en: !input manual_auto_off_duration_enabled
@@ -325,66 +337,53 @@ trigger_variables:
   trig_vac_days: !input vacation_auto_off_days
 
 variables:
-  # --- 2. CORE VARIABLEN REGISTRIEREN ---
   climate_entity: !input climate_entity
   home_presence: !input home_presence
   no_home_presence_wait: !input no_home_presence_wait
   room_presence: !input room_presence
   window_active_modes: !input window_active_modes
-  
   away_temperature: !input away_temperature
   away_temperature_entity: !input away_temperature_entity
-  
   manual_temperature_control: !input manual_temperature_control
   manual_temperature: !input manual_temperature
-  
   vacation_switch: !input vacation_switch
   vacation_temperature: !input vacation_temperature
   vacation_temperature_entity: !input vacation_temperature_entity
-  
   window_sensor: !input window_sensor
   window_temperature: !input window_temperature
   window_temperature_entity: !input window_temperature_entity
-  
   extern_mode_switch: !input extern_mode_switch
   extern_temperature: !input extern_temperature
   extern_temperature_entity: !input extern_temperature_entity
-  
   summer_mode_toggle: !input summer_mode_toggle
   summer_sensor: !input summer_sensor
   summer_sensor_threshold: !input summer_sensor_threshold
   summer_temperature_static: !input summer_temperature_static
   summer_temperature_entity: !input summer_temperature_entity
-  
   morning_time: !input morning_time
   morning_eco_temperature: !input morning_eco_temperature
   morning_eco_temperature_entity: !input morning_eco_temperature_entity
   morning_comfort_temperature: !input morning_comfort_temperature
   morning_comfort_temperature_entity: !input morning_comfort_temperature_entity
-  
   day_time: !input day_time
   day_eco_temperature: !input day_eco_temperature
   day_eco_temperature_entity: !input day_eco_temperature_entity
   day_comfort_temperature: !input day_comfort_temperature
   day_comfort_temperature_entity: !input day_comfort_temperature_entity
-  
   evening_time: !input evening_time
   evening_eco_temperature: !input evening_eco_temperature
   evening_eco_temperature_entity: !input evening_eco_temperature_entity
   evening_comfort_temperature: !input evening_comfort_temperature
   evening_comfort_temperature_entity: !input evening_comfort_temperature_entity
-  
   night_time: !input night_time
   night_eco_temperature: !input night_eco_temperature
   night_eco_temperature_entity: !input night_eco_temperature_entity
   night_comfort_temperature: !input night_comfort_temperature
   night_comfort_temperature_entity: !input night_comfort_temperature_entity
-
   status_text_entity: !input status_text_entity
   window_status_boolean: !input window_status_boolean
   summer_status_boolean: !input summer_status_boolean
   extern_status_boolean: !input extern_status_boolean
-
   manual_auto_off_time_enabled: !input manual_auto_off_time_enabled
   manual_auto_off_time: !input manual_auto_off_time
   manual_auto_off_duration_enabled: !input manual_auto_off_duration_enabled
@@ -393,32 +392,26 @@ variables:
   vacation_auto_off_days_enabled: !input vacation_auto_off_days_enabled
   vacation_auto_off_days: !input vacation_auto_off_days
 
-  # --- 3. FALLBACK TEMPERATUREN BERECHNEN ---
   eff_away: >-
     {% set ent = away_temperature_entity %}
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(16.5) }}
     {% else %} {{ away_temperature | float(16.5) }} {% endif %}
-
   eff_window: >-
     {% set ent = window_temperature_entity %}
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(5.0) }}
     {% else %} {{ window_temperature | float(5.0) }} {% endif %}
-
   eff_extern: >-
     {% set ent = extern_temperature_entity %}
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(15.0) }}
     {% else %} {{ extern_temperature | float(15.0) }} {% endif %}
-
   eff_summer: >-
     {% set ent = summer_temperature_entity %}
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(5.0) }}
     {% else %} {{ summer_temperature_static | float(5.0) }} {% endif %}
-
   eff_vacation: >-
     {% set ent = vacation_temperature_entity %}
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(15.0) }}
     {% else %} {{ vacation_temperature | float(15.0) }} {% endif %}
-
   eff_m_eco: >-
     {% set ent = morning_eco_temperature_entity %}
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(19.0) }}
@@ -427,7 +420,6 @@ variables:
     {% set ent = morning_comfort_temperature_entity %}
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(21.0) }}
     {% else %} {{ morning_comfort_temperature | float(21.0) }} {% endif %}
-
   eff_d_eco: >-
     {% set ent = day_eco_temperature_entity %}
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(19.0) }}
@@ -436,7 +428,6 @@ variables:
     {% set ent = day_comfort_temperature_entity %}
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(21.0) }}
     {% else %} {{ day_comfort_temperature | float(21.0) }} {% endif %}
-
   eff_e_eco: >-
     {% set ent = evening_eco_temperature_entity %}
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(18.0) }}
@@ -445,7 +436,6 @@ variables:
     {% set ent = evening_comfort_temperature_entity %}
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(21.0) }}
     {% else %} {{ evening_comfort_temperature | float(21.0) }} {% endif %}
-
   eff_n_eco: >-
     {% set ent = night_eco_temperature_entity %}
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(17.0) }}
@@ -455,48 +445,36 @@ variables:
     {% if ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] %} {{ states(ent) | float(21.0) }}
     {% else %} {{ night_comfort_temperature | float(21.0) }} {% endif %}
 
-  # --- 4. STATUS & LOGIK ENGINE ---
   is_manual: >-
     {% set ent = manual_temperature_control %}
     {{ ent != [] and ent != none and is_state(ent, 'on') }}
-    
   is_vacation: >-
     {% set ent = vacation_switch %}
     {{ ent != [] and ent != none and is_state(ent, 'on') }}
-
   is_room_occupied: >-
     {% set ent = room_presence %}
     {{ ent == [] or ent == none or is_state(ent, 'on') }}
-
   is_extern: >-
     {% set ent = extern_mode_switch %}
     {{ ent != [] and ent != none and is_state(ent, 'on') }}
-
   is_summer_toggle: >-
     {% set ent = summer_mode_toggle %}
     {{ ent != [] and ent != none and is_state(ent, 'on') }}
-
   is_summer_sensor: >-
     {% set ent = summer_sensor %}
     {{ ent != [] and ent != none and states(ent) not in ['unknown', 'unavailable', 'none', ''] and states(ent) | float(0) >= (summer_sensor_threshold | float(22.0)) }}
-
   is_summer: "{{ is_summer_toggle | bool or is_summer_sensor | bool }}"
 
-  # --- KORREKTUR: ROBUSTE FENSTER-ERKENNUNG & ZÄHLUNG ---
   is_window_open: >-
     {% set ent = window_sensor %}
     {% if ent != [] and ent != none %}
-      {% set members = state_attr(ent, 'entity_id') %}
-      {% set targets = members if members != none else ent %}
-      {{ expand(targets) | selectattr('state', 'eq', 'on') | list | length > 0 }}
+      {{ expand(ent) | selectattr('state', 'eq', 'on') | list | length > 0 }}
     {% else %} false {% endif %}
 
   open_windows_text: >-
     {% set ent = window_sensor %}
     {% if ent != [] and ent != none %}
-      {% set members = state_attr(ent, 'entity_id') %}
-      {% set targets = members if members != none else ent %}
-      {% set opens = expand(targets) | selectattr('state', 'eq', 'on') | list %}
+      {% set opens = expand(ent) | selectattr('state', 'eq', 'on') | list %}
       {% set count = opens | length %}
       {% if count > 0 %}
         {% set names = opens | map(attribute='name') | join(', ') %}
@@ -525,7 +503,6 @@ variables:
     {% elif e <= t < n %} Abend
     {% else %} Nacht {% endif %}
     
-  # --- 5. DYNAMISCHE PRIORITÄTEN BERECHNUNG ---
   base_mode: >-
     {% if is_manual | bool %}manual
     {% elif is_summer | bool %}summer
@@ -605,7 +582,6 @@ trigger:
   - platform: state
     entity_id: !input away_temperature_entity
 
-  # --- AUTO-RESET TRIGGERS (Nutzung der sicheren trigger_variables) ---
   - platform: template
     value_template: >-
       {% if trig_man_dur_en and trig_man_ctrl != [] and trig_man_ctrl != none %}
@@ -613,13 +589,11 @@ trigger:
           {{ (now() - states[trig_man_ctrl].last_changed).total_seconds() >= (trig_man_dur | float(120) * 60) }}
         {% else %}false{% endif %}
       {% else %}false{% endif %}
-      
   - platform: template
     value_template: >-
       {% if trig_man_time_en and trig_man_ctrl != [] and trig_man_ctrl != none %}
         {{ is_state(trig_man_ctrl, 'on') and now().strftime('%H:%M') == trig_man_time[0:5] }}
       {% else %}false{% endif %}
-      
   - platform: template
     value_template: >-
       {% if trig_man_pres and trig_man_ctrl != [] and trig_man_ctrl != none and trig_home != [] and trig_home != none %}
@@ -627,7 +601,6 @@ trigger:
           {{ (now() - states[trig_home].last_changed).total_seconds() >= (trig_home_wait | float(0)) }}
         {% else %}false{% endif %}
       {% else %}false{% endif %}
-      
   - platform: template
     value_template: >-
       {% if trig_vac_days_en and trig_vac_switch != [] and trig_vac_switch != none %}
@@ -636,15 +609,9 @@ trigger:
         {% else %}false{% endif %}
       {% else %}false{% endif %}
 
-condition:
-  - condition: not
-    conditions:
-      - condition: state
-        entity_id: !input climate_entity
-        state: unavailable
+condition: []
 
 action:
-  # 0. Auto-Reset Ausführung (Schaltet die Schalter hart auf OFF)
   - choose:
       - conditions:
           - condition: template
@@ -661,8 +628,7 @@ action:
           - service: input_boolean.turn_off
             target:
               entity_id: !input manual_temperature_control
-          - stop: "Manueller Modus automatisch deaktiviert. Neustart der Automation abwarten."
-
+          - stop: "Deaktiviert."
       - conditions:
           - condition: template
             value_template: >-
@@ -674,9 +640,8 @@ action:
           - service: input_boolean.turn_off
             target:
               entity_id: !input vacation_switch
-          - stop: "Urlaubsmodus automatisch deaktiviert. Neustart der Automation abwarten."
+          - stop: "Deaktiviert."
 
-  # 1. Sommer-Status Helper aktualisieren
   - choose:
       - conditions:
           - condition: template
@@ -697,7 +662,6 @@ action:
             target:
               entity_id: !input summer_status_boolean
 
-  # 2. Fenster-Status Helper aktualisieren
   - choose:
       - conditions:
           - condition: template
@@ -718,7 +682,6 @@ action:
             target:
               entity_id: !input window_status_boolean
 
-  # 3. Extern-Status Helper aktualisieren
   - choose:
       - conditions:
           - condition: template
@@ -739,7 +702,6 @@ action:
             target:
               entity_id: !input extern_status_boolean
 
-  # 4. Status Text Helper aktualisieren
   - choose:
       - conditions:
           - condition: template
@@ -753,14 +715,19 @@ action:
             target:
               entity_id: !input status_text_entity
 
-  # 5. Temperatur an Thermostat senden (Sicherer Float)
   - choose:
       - conditions:
           - condition: template
             value_template: >-
               {% set target = calc_target_temp | float(-99) %}
-              {% set current = state_attr(climate_entity, 'temperature') | float(-99) %}
-              {{ current != target }}
+              {% set ns = namespace(update_needed=false) %}
+              {% for state in expand(climate_entity) %}
+                {% set curr = state.attributes.temperature | float(-99) %}
+                {% if curr != target %}
+                  {% set ns.update_needed = true %}
+                {% endif %}
+              {% endfor %}
+              {{ ns.update_needed }}
         sequence:
           - service: climate.set_temperature
             data:
